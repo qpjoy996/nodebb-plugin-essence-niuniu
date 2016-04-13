@@ -13,3 +13,5 @@ In the composer you can post a topic as a question thread:
 
 
 ## TODO
+
+* 精华帖样式（http://fortawesome.github.io/Font-Awesome/icons/）

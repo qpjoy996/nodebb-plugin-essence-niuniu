@@ -12,9 +12,6 @@
 			"hook": "filter:config.get", "method": "appendConfig"
 		},
 		{
-			"hook": "filter:admin.header.build", "method": "addAdminNavigation"
-		},
-		{
 			"hook": "filter:topics.get", "method": "getTopics"
 		},
 		{
@@ -22,9 +19,6 @@
 		},
 		{
 			"hook": "filter:navigation.available", "method": "addNavigation"
-		},
-		{
-			"hook": "filter:post.tools", "method": "addPostTool"
 		},
 		{
 			"hook": "filter:rewards.conditions", "method": "getConditions"
@@ -38,6 +32,5 @@
 	],
 	"scripts": [
 		"static/lib/main.js"
-	],
-	"templates": "static/templates"
+	]
 }

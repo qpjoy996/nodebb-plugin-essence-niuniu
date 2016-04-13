@@ -18,14 +18,8 @@ plugin.init = function(params, callback) {
 		middleware = params.middleware,
 		controllers = params.controllers;
 
-	app.get('/admin/plugins/essence', middleware.admin.buildHeader, renderAdmin);
-	app.get('/api/admin/plugins/essence', renderAdmin);
-
-	app.get('/mark_essence', middleware.buildHeader, renderUnsolved);
-	app.get('/api/mark_essence', renderUnsolved);
-
-	app.get('/mark_unessence', middleware.buildHeader, renderSolved);
-	app.get('/api/mark_unessence', renderSolved);
+	app.get('/essence', middleware.buildHeader, renderEssenced);
+	app.get('/api/essence', renderEssenced);
 
 	handleSocketIO();
 
@@ -40,46 +34,28 @@ plugin.appendConfig = function(config, callback) {
 };
 
 plugin.addNavigation = function(menu, callback) {
-	menu = menu.concat(
-		[
+	menu = menu.push(
 			{
-				"route": "/mark_essence",
+				"route": "/essence",
 				"title": "精华帖",
 				"iconClass": "fa-question-circle",
 				"text": "精华帖"
-			},
-			{
-				"route": "/mark_unessence",
-				"title": "取消精华标识",
-				"iconClass": "fa-check-circle",
-				"text": "取消精华标识"
 			}
-		]
 	);
 
 	callback (null, menu);
-};
-
-plugin.addAdminNavigation = function(header, callback) {
-	header.plugins.push({
-		route: '/plugins/essence',
-		icon: 'fa-question-circle',
-		name: 'Q&A'
-	});
-
-	callback(null, header);
 };
 
 plugin.getTopics = function(data, callback) {
 	var topics = data.topics;
 
 	async.map(topics, function(topic, next) {
-		if (parseInt(topic.isQuestion, 10)) {
-			if (parseInt(topic.isSolved, 10)) {
-				topic.title = '<span class="answered"><i class="fa fa-question-circle"></i> Solved</span> ' + topic.title;
-			} else {
-				topic.title = '<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span> ' + topic.title;
-			}
+		if(parseInt(topic.isEssence, 10)){
+			//精华帖样式
+			topic.title ='<span class="answered"><i class="fa fa-question-circle"></i> Solved</span> ' + topic.title;
+		}else{
+			//普通帖
+			//topic.title = '<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span> ' + topic.title;
 		}
 
 		return next(null, topic);
@@ -89,25 +65,19 @@ plugin.getTopics = function(data, callback) {
 };
 
 plugin.addThreadTool = function(data, callback) {
-	var isSolved = parseInt(data.topic.isSolved, 10);
-
-	if (parseInt(data.topic.isQuestion, 10)) {
-		data.tools = data.tools.concat([
-			{
-				class: 'toggleSolved ' + (isSolved ? 'alert-warning topic-solved' : 'alert-success topic-unsolved'),
-				title: isSolved ? 'Mark as Unsolved' : 'Mark as Solved',
-				icon: isSolved ? 'fa-question-circle' : 'fa-check-circle'
-			},
-			{
-				class: 'toggleQuestionStatus',
-				title: 'Make this a normal topic',
-				icon: 'fa-comments'
-			}
-		]);
-	} else {
+	//是否为精华帖
+	var isEssence = parseInt(data.topic.isEssence, 10);
+	//是管理员 版主才可以加精
+	if(isEssence){ //是精华帖 管理员可以取消加精
+			data.tools.push({
+				class: 'toggleQuestionStatus alert-warning',
+				title: '标记为精华帖',
+				icon: 'fa-question-circle'
+			});
+	}else{//非精华帖管理员可以加精
 		data.tools.push({
 			class: 'toggleQuestionStatus alert-warning',
-			title: 'Ask as question',
+			title: '取消精华帖标记',
 			icon: 'fa-question-circle'
 		});
 	}
@@ -115,98 +85,79 @@ plugin.addThreadTool = function(data, callback) {
 	callback(false, data);
 };
 
-plugin.addPostTool = function(postData, callback) {
-	topics.getTopicDataByPid(postData.pid, function(err, data) {
-		data.isSolved = parseInt(data.isSolved, 10) === 1;
-		data.isQuestion = parseInt(data.isQuestion, 10) === 1;
-
-		if (data.uid && !data.isSolved && data.isQuestion && parseInt(data.mainPid, 10) !== parseInt(postData.pid, 10)) {
-			postData.tools.push({
-				"action": "qanda/post-solved",
-				"html": "Mark this post as the correct answer",
-				"icon": "fa-check-circle"
-			});
-		}
-
-		callback(false, postData);
-	});
-};
+// plugin.addPostTool = function(postData, callback) {
+// 	topics.getTopicDataByPid(postData.pid, function(err, data) {
+// 		data.isEssenced = parseInt(data.isEssenced, 10) === 1;
+// 		data.isQuestion = parseInt(data.isQuestion, 10) === 1;
+//
+// 		if (data.uid && !data.isEssenced && data.isQuestion && parseInt(data.mainPid, 10) !== parseInt(postData.pid, 10)) {
+// 			postData.tools.push({
+// 				"action": "HollyEssence/post-solved",
+// 				"html": "Mark this post as the correct answer",
+// 				"icon": "fa-check-circle"
+// 			});
+// 		}
+//
+// 		callback(false, postData);
+// 	});
+// };
 
 plugin.getConditions = function(conditions, callback) {
 	conditions.push({
 		"name": "Times questions accepted",
-		"condition": "qanda/question.accepted"
+		"condition": "HollyEssence/question.accepted"
 	});
 
 	callback(false, conditions);
 };
 
-function renderAdmin(req, res, next) {
-	async.waterfall([
-		async.apply(db.getSortedSetRange, 'categories:cid', 0, -1),
-		function(cids, next) {
-			categories.getCategoriesFields(cids, ['cid', 'name'], next);
-		}
-	], function(err, data) {
-		res.render('admin/plugins/question-and-answer', {
-			categories: data
-		});
-	});
-}
-
 function handleSocketIO() {
-	SocketPlugins.QandA = {};
-
-	SocketPlugins.QandA.toggleSolved = function(socket, data, callback) {
-		privileges.topics.canEdit(data.tid, socket.uid, function(err, canEdit) {
-			if (!canEdit) {
+	SocketPlugins.HollyEssence = {};
+  // 标记是否为精华帖
+	SocketPlugins.HollyEssence.toggleEssenced = function(socket, data, callback) {
+		//判断是不是合法管理人员 ，只有管理人员或版主才可以给帖子加精华帖标示
+		privileges.topics.isAdminOrMod(data.tid,socket.uid,function(err,canAddEssence){
+			if(!canAddEssence){
 				return callback(new Error('[[error:no-privileges]]'));
 			}
 
-			if (data.pid) {
-				toggleSolved(data.tid, data.pid, callback);
-			} else {
-				toggleSolved(data.tid, callback);
-			}
+				if (data.pid) {
+					toggleEssenced(data.tid, data.pid, callback);
+				} else {
+					toggleEssenced(data.tid, callback);
+				}
 		});
 	};
 
-	SocketPlugins.QandA.toggleQuestionStatus = function(socket, data, callback) {
-		privileges.topics.canEdit(data.tid, socket.uid, function(err, canEdit) {
-			if (!canEdit) {
-				return callback(new Error('[[error:no-privileges]]'));
-			}
-
-			toggleQuestionStatus(data.tid, callback);
-		});
-	};
 }
-
-function toggleSolved(tid, pid, callback) {
+//帖子加精 和取消精华帖标示
+function toggleEssenced(tid, pid, callback) {
 	if (!callback) {
 		callback = pid;
 		pid = false;
 	}
 
-	topics.getTopicField(tid, 'isSolved', function(err, isSolved) {
-		isSolved = parseInt(isSolved, 10) === 1;
+	topics.getTopicField(tid, 'isEssenced', function(err, isEssenced) {
+		isEssenced = parseInt(isEssenced, 10) === 1;
 
 		async.parallel([
 			function(next) {
-				topics.setTopicField(tid, 'isSolved', isSolved ? 0 : 1, next);
+				topics.setTopicField(tid, 'isEssenced', isEssenced ? 0 : 1, next);
 			},
 			function(next) {
-				if (!isSolved && pid) {
-					topics.setTopicField(tid, 'solvedPid', pid, next);
+				if (!isEssenced && pid) {
+					topics.setTopicField(tid, 'essencedPid', pid, next);
 				} else {
-					topics.deleteTopicField(tid, 'solvedPid', next);
+					topics.deleteTopicField(tid, 'essencedPid', next);
 				}
 			},
 			function(next) {
-				if (!isSolved && pid) {
+				if (!isEssenced && pid) { //原未加精  现在toggle 加精
 					posts.getPostData(pid, function(err, data) {
-						rewards.checkConditionAndRewardUser(data.uid, 'qanda/question.accepted', function(callback) {
-							user.incrementUserFieldBy(data.uid, 'qanda/question.accepted', 1, callback);
+						//检查奖励条件 奖励发精华帖的用户
+						//TODO 待修改 验证确认
+						rewards.checkConditionAndRewardUser(data.uid, 'HollyEssence/essence.accepted', function(callback) {
+							user.incrementUserFieldBy(data.uid, 'HollyEssence/essence.accepted', 1, callback);
 						});
 
 						next();
@@ -216,78 +167,27 @@ function toggleSolved(tid, pid, callback) {
 				}
 			},
 			function(next) {
-				if (!isSolved) {
-					db.sortedSetRemove('topics:unsolved', tid, function() {
-						db.sortedSetAdd('topics:solved', Date.now(), tid, next);
-					});
+				if (!isEssenced) { //原未加精  现在toggle 加精
+					db.sortedSetAdd('topics:essenced', Date.now(), tid, next);
 				} else {
-					db.sortedSetAdd('topics:unsolved', Date.now(), tid, function() {
-						db.sortedSetRemove('topics:solved', tid, next);
-					});
+					db.sortedSetRemove('topics:essenced', tid, next);
 				}
 			}
 		], function(err) {
-			callback(err, {isSolved: !isSolved});
+			callback(err, {isEssenced: !isEssenced});
 		});
 	});
 }
 
-function toggleQuestionStatus(tid, callback) {
-	topics.getTopicField(tid, 'isQuestion', function(err, isQuestion) {
-		isQuestion = parseInt(isQuestion, 10) === 1;
-
-		async.parallel([
-			function(next) {
-				topics.setTopicField(tid, 'isQuestion', isQuestion ? 0 : 1, next);
-			},
-			function(next) {
-				if (!isQuestion) {
-					async.parallel([
-						function(next) {
-							topics.setTopicField(tid, 'isSolved', 0, next);
-						},
-						function(next) {
-							db.sortedSetAdd('topics:unsolved', Date.now(), tid, next);
-						},
-						function(next) {
-							db.sortedSetRemove('topics:solved', tid, next);
-						}
-					], next);
-				} else {
-					db.sortedSetRemove('topics:unsolved', tid, function() {
-						db.sortedSetRemove('topics:solved', tid, next);
-						topics.deleteTopicField(tid, 'solvedPid');
-					});
-				}
-			}
-		], function(err) {
-			callback(err, {isQuestion: !isQuestion});
-		});
-	});
-}
-
-function renderUnsolved(req, res, next) {
+function renderEssenced(req, res, next) {
 	var stop = (parseInt(meta.config.topicsPerList, 10) || 20) - 1;
-	topics.getTopicsFromSet('topics:unsolved', req.uid, 0, stop, function(err, data) {
+	topics.getTopicsFromSet('topics:essenced', req.uid, 0, stop, function(err, data) {
 		if (err) {
 			return next(err);
 		}
 
 		data['feeds:disableRSS'] = true;
-		data.breadcrumbs = helpers.buildBreadcrumbs([{text: 'Unsolved'}]);
-		res.render('recent', data);
-	});
-}
-
-function renderSolved(req, res, next) {
-	var stop = (parseInt(meta.config.topicsPerList, 10) || 20) - 1;
-	topics.getTopicsFromSet('topics:solved', req.uid, 0, stop, function(err, data) {
-		if (err) {
-			return next(err);
-		}
-
-		data['feeds:disableRSS'] = true;
-		data.breadcrumbs = helpers.buildBreadcrumbs([{text: 'Solved'}]);
+		data.breadcrumbs = helpers.buildBreadcrumbs([{text: '精华帖'}]);
 		res.render('recent', data);
 	});
 }
