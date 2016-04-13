@@ -1,0 +1,43 @@
+{
+	"id": "nodebb-plugin-essence",
+	"name": "Mark Topic as essence Plugin for NodeBB",
+	"description": "A nodebb-plugin-essence plugin for NodeBB which allows administrator to mark topics as essence",
+	"url": "https://github.com/hl4god/nodebb-plugin-essence",
+	"library": "./library.js",
+	"hooks": [
+		{
+			"hook": "static:app.load", "method": "init"
+		},
+		{
+			"hook": "filter:config.get", "method": "appendConfig"
+		},
+		{
+			"hook": "filter:admin.header.build", "method": "addAdminNavigation"
+		},
+		{
+			"hook": "filter:topics.get", "method": "getTopics"
+		},
+		{
+			"hook": "filter:topic.thread_tools", "method": "addThreadTool"
+		},
+		{
+			"hook": "filter:navigation.available", "method": "addNavigation"
+		},
+		{
+			"hook": "filter:post.tools", "method": "addPostTool"
+		},
+		{
+			"hook": "filter:rewards.conditions", "method": "getConditions"
+		}
+	],
+	"staticDirs": {
+		"static": "./static"
+	},
+	"less": [
+		"static/style.less"
+	],
+	"scripts": [
+		"static/lib/main.js"
+	],
+	"templates": "static/templates"
+}
