@@ -17,16 +17,16 @@ $('document').ready(function() {
 
 
 	function addHandlers() {
-		$('.toggleQuestionStatus').on('click', toggleEssenced);
+		$('.toggleEssenced').on('click', toggleEssenced);
 	}
 
 	function addLabel() {
-		if (ajaxify.data.hasOwnProperty('isQuestion') && parseInt(ajaxify.data.isQuestion, 10) === 1) {
+		if (ajaxify.data.hasOwnProperty('isEssenced') && parseInt(ajaxify.data.isEssenced, 10) === 1) {
 			require(['components'], function(components) {
-				if (parseInt(ajaxify.data.isSolved, 10) === 0) {
-					components.get('post/header').prepend('<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span>');
-				} else if (parseInt(ajaxify.data.isSolved, 10) === 1) {
-					components.get('post/header').prepend('<span class="answered"><i class="fa fa-question-circle"></i> Solved</span>');
+				if (parseInt(ajaxify.data.isEssenced, 10) === 0) {
+					//components.get('post/header').prepend('<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span>');
+				} else if (parseInt(ajaxify.data.isEssenced, 10) === 1) {
+					components.get('post/header').prepend('<span class="answered"><i class="fa fa-question-circle"></i> 精华帖</span>');
 				}
 			});
 		}

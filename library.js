@@ -50,9 +50,9 @@ plugin.getTopics = function(data, callback) {
 	var topics = data.topics;
 
 	async.map(topics, function(topic, next) {
-		if(parseInt(topic.isEssence, 10)){
+		if(parseInt(topic.isEssenced, 10)){
 			//精华帖样式
-			topic.title ='<span class="answered"><i class="fa fa-question-circle"></i> Solved</span> ' + topic.title;
+			topic.title ='<span class="answered"><i class="fa fa-question-circle"></i> 精华帖</span> ' + topic.title;
 		}else{
 			//普通帖
 			//topic.title = '<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span> ' + topic.title;
@@ -66,23 +66,31 @@ plugin.getTopics = function(data, callback) {
 
 plugin.addThreadTool = function(data, callback) {
 	//是否为精华帖
-	var isEssence = parseInt(data.topic.isEssence, 10);
+	var isEssenced = parseInt(data.topic.isEssenced, 10);
 	//是管理员 版主才可以加精
-	if(isEssence){ //是精华帖 管理员可以取消加精
-			data.tools.push({
-				class: 'toggleQuestionStatus alert-warning',
-				title: '标记为精华帖',
-				icon: 'fa-question-circle'
-			});
-	}else{//非精华帖管理员可以加精
+	if(!isEssenced){
+		data.tools.push({//非精华帖管理员可以加精
+			class: 'toggleEssenced alert-warning',
+			title: '标记为精华帖',
+			icon: 'fa-question-circle'
+		});
+	}else{//是精华帖 管理员可以取消加精  toggleQuestionStatus
 		data.tools.push({
-			class: 'toggleQuestionStatus alert-warning',
+			class: 'toggleEssenced alert-warning',
 			title: '取消精华帖标记',
 			icon: 'fa-question-circle'
 		});
 	}
 
 	callback(false, data);
+	//判断是不是合法管理人员 ，只有管理人员或版主才可以给帖子加精华帖标示
+	// privileges.topics.isAdminOrMod(data.tid,socket.uid,function(err,canAddEssence){
+	// 	if(canAddEssence){
+	//
+	// 	}
+	//
+	// });
+
 };
 
 // plugin.addPostTool = function(postData, callback) {
@@ -105,7 +113,7 @@ plugin.addThreadTool = function(data, callback) {
 plugin.getConditions = function(conditions, callback) {
 	conditions.push({
 		"name": "Times questions accepted",
-		"condition": "HollyEssence/question.accepted"
+		"condition": "HollyEssence/essence.accepted"
 	});
 
 	callback(false, conditions);
@@ -135,7 +143,7 @@ function toggleEssenced(tid, pid, callback) {
 	if (!callback) {
 		callback = pid;
 		pid = false;
-	}
+	}//isEssenced
 
 	topics.getTopicField(tid, 'isEssenced', function(err, isEssenced) {
 		isEssenced = parseInt(isEssenced, 10) === 1;
