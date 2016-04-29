@@ -38,7 +38,7 @@ plugin.addNavigation = function(menu, callback) {
 			{
 				"route": "/essence",
 				"title": "精华帖",
-				"iconClass": "fa-question-circle",
+				"iconClass": "nodebb-essence",
 				"text": "精华帖"
 			}
 	);
@@ -52,10 +52,10 @@ plugin.getTopics = function(data, callback) {
 	async.map(topics, function(topic, next) {
 		if(parseInt(topic.isEssenced, 10)){
 			//精华帖样式
-			topic.title ='<span class="answered"><i class="fa fa-question-circle"></i> 精华帖</span> ' + topic.title;
+			topic.title ='<span class="answered"><i class="fa nodebb-essence"></i> 精华帖</span> ' + topic.title;
 		}else{
 			//普通帖
-			//topic.title = '<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span> ' + topic.title;
+			//topic.title = '<span class="unanswered"><i class="fa nodebb-essence"></i> Unsolved</span> ' + topic.title;
 		}
 
 		return next(null, topic);
@@ -72,13 +72,13 @@ plugin.addThreadTool = function(data, callback) {
 		data.tools.push({//非精华帖管理员可以加精
 			class: 'toggleEssenced alert-warning',
 			title: '标记为精华帖',
-			icon: 'fa-question-circle'
+			icon: 'nodebb-essence'
 		});
 	}else{//是精华帖 管理员可以取消加精  toggleQuestionStatus
 		data.tools.push({
 			class: 'toggleEssenced alert-warning',
 			title: '取消精华帖标记',
-			icon: 'fa-question-circle'
+			icon: 'nodebb-essence'
 		});
 	}
 
