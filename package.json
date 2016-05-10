@@ -1,6 +1,6 @@
 {
   "name": "nodebb-plugin-essence",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A nodebb-plugin-essence plugin for NodeBB which allows administrator to mark topics as essence",
   "main": "library.js",
   "repository": {
