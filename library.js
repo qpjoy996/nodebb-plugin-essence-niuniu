@@ -15,7 +15,7 @@ var plugin = {},
 	SocketPlugins = require.main.require('./src/socket.io/plugins');
 
 plugin.init = async function(params) {
-	console.log('Avatar info', `essence init`);
+	// console.log('Avatar info', `essence init`);
 	var app = params.router,
 		middleware = params.middleware;
 
@@ -119,7 +119,7 @@ plugin.getConditions = async function(conditions) {
 };
 
 function handleSocketIO() {
-	console.log('Avatar info', `essence handleSocketIO`);
+	// console.log('Avatar info', `essence handleSocketIO`);
 	SocketPlugins.HollyEssence = {};
   // 标记是否为精华帖
 	SocketPlugins.HollyEssence.toggleEssenced = async function(socket, data) {
