@@ -26,7 +26,8 @@ $('document').ready(function() {
 				if (parseInt(ajaxify.data.isEssenced, 10) === 0) {
 					//components.get('post/header').prepend('<span class="unanswered"><i class="fa fa-question-circle"></i> Unsolved</span>');
 				} else if (parseInt(ajaxify.data.isEssenced, 10) === 1) {
-					components.get('post/header').prepend('<span class="answered"><i class="fa nodebb-essence"></i> 精华帖</span>');
+					components.get('post/header').prepend('<span class="e-answered">精华帖</span>');
+					// components.get('post/header').prepend('<span class="answered" style="padding:0;border:none;"><i class="fa nodebb-essence-big" style="vertical-align:middle;"></i> </span>');
 				}
 			});
 		}

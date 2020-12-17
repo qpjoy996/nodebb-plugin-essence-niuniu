@@ -1,40 +1,41 @@
 "use strict";
 
 var plugin = {},
-	async = module.parent.require('async'),
-	topics = module.parent.require('./topics'),
-	posts = module.parent.require('./posts'),
-	categories = module.parent.require('./categories'),
-	meta = module.parent.require('./meta'),
-	privileges = module.parent.require('./privileges'),
-	rewards = module.parent.require('./rewards'),
-	user = module.parent.require('./user'),
-	helpers = module.parent.require('./controllers/helpers'),
-	db = module.parent.require('./database'),
-	SocketPlugins = module.parent.require('./socket.io/plugins');
+	// async = require.main.require('async'),
+	topics = require.main.require('./src/topics'),
+	posts = require.main.require('./src/posts'),
+	categories = require.main.require('./src/categories'),
+	meta = require.main.require('./src/meta'),
+	privileges = require.main.require('./src/privileges'),
+	rewards = require.main.require('./src/rewards'),
+	user = require.main.require('./src/user'),
+	helpers = require.main.require('./src/controllers/helpers'),
+	db = require.main.require('./src/database'),
+	plugins = require.main.require('./src/plugins'),
+	SocketPlugins = require.main.require('./src/socket.io/plugins');
 
-plugin.init = function(params, callback) {
+plugin.init = async function(params) {
+	console.log('Avatar info', `essence init`);
 	var app = params.router,
-		middleware = params.middleware,
-		controllers = params.controllers;
+		middleware = params.middleware;
 
 	app.get('/essence', middleware.buildHeader, renderEssenced);
 	app.get('/api/essence', renderEssenced);
 
 	handleSocketIO();
 
-	callback();
+	plugin._settings = await meta.settings.get('essence');
 };
 
-plugin.appendConfig = function(config, callback) {
-	meta.settings.get('essence', function(err, settings) {
-		config['essence'] = settings;
-		callback(null, config);
-	});
+plugin.appendConfig = async function(config) {
+	// console.log('Avatar info', `essence appendConfig`);
+	config['essence'] = plugin._settings;
+	return config;
 };
 
-plugin.addNavigation = function(menu, callback) {
-	menu = menu.push(
+plugin.addNavigation = async function(menu) {
+	console.log('Avatar info', `essence addNavigation`);
+	menu = menu.concat(
 			{
 				"route": "/essence",
 				"title": "精华帖",
@@ -42,29 +43,28 @@ plugin.addNavigation = function(menu, callback) {
 				"text": "精华帖"
 			}
 	);
-
-	callback (null, menu);
+	return menu;
 };
 
-plugin.getTopics = function(data, callback) {
-	var topics = data.topics;
+plugin.getTopics = async function(hookData) {
+	// console.log('Avatar info', `essence getTopics`);
 
-	async.map(topics, function(topic, next) {
-		if(parseInt(topic.isEssenced, 10)){
-			//精华帖样式
-			topic.title ='<span class="answered"><i class="fa nodebb-essence"></i> 精华帖</span> ' + topic.title;
-		}else{
+	hookData.topics.forEach((topic) => {
+		if (topic && parseInt(topic.isEssenced, 10)) {			
+			// topic.essence ='<span class="answered" style="padding:0;border:none;"><i class="fa nodebb-essence" style="vertical-align:middle;"></i> </span> ';
+			// topic.essence ='<span class="answered"><i class="fa nodebb-essence"></i> 精华帖</span> ';
+			topic.essence ='<span class="e-answered">精华帖</span> ';
+		}else {
+			topic.essence ='';
 			//普通帖
-			//topic.title = '<span class="unanswered"><i class="fa nodebb-essence"></i> Unsolved</span> ' + topic.title;
+			// topic.titleSolver = '<span class="unanswered"><i class="fa fa-question-circle"></i> [[qanda:topic_unsolved]]</span> ';
 		}
-
-		return next(null, topic);
-	}, function(err, topics) {
-		return callback(err, data);
 	});
+	return hookData;
 };
 
-plugin.addThreadTool = function(data, callback) {
+plugin.addThreadTool = async function(data) {
+	// console.log('Avatar info', `essence addThreadTool`);
 	//是否为精华帖
 	var isEssenced = parseInt(data.topic.isEssenced, 10);
 	//是管理员 版主才可以加精
@@ -82,7 +82,7 @@ plugin.addThreadTool = function(data, callback) {
 		});
 	}
 
-	callback(false, data);
+	return data;
 	//判断是不是合法管理人员 ，只有管理人员或版主才可以给帖子加精华帖标示
 	// privileges.topics.isAdminOrMod(data.tid,socket.uid,function(err,canAddEssence){
 	// 	if(canAddEssence){
@@ -90,7 +90,6 @@ plugin.addThreadTool = function(data, callback) {
 	// 	}
 	//
 	// });
-
 };
 
 // plugin.addPostTool = function(postData, callback) {
@@ -110,94 +109,118 @@ plugin.addThreadTool = function(data, callback) {
 // 	});
 // };
 
-plugin.getConditions = function(conditions, callback) {
+plugin.getConditions = async function(conditions) {
+	console.log('Avatar info', `essence getConditions`);
 	conditions.push({
 		"name": "Times questions accepted",
 		"condition": "HollyEssence/essence.accepted"
 	});
-
-	callback(false, conditions);
+	return conditions;
 };
 
 function handleSocketIO() {
+	console.log('Avatar info', `essence handleSocketIO`);
 	SocketPlugins.HollyEssence = {};
   // 标记是否为精华帖
-	SocketPlugins.HollyEssence.toggleEssenced = function(socket, data, callback) {
+	SocketPlugins.HollyEssence.toggleEssenced = async function(socket, data) {
 		//判断是不是合法管理人员 ，只有管理人员或版主才可以给帖子加精华帖标示
-		privileges.topics.isAdminOrMod(data.tid,socket.uid,function(err,canAddEssence){
-			if(!canAddEssence){
-				return callback(new Error('[[error:no-privileges]]'));
-			}
+		const canEdit = await privileges.topics.canEdit(data.tid, socket.uid);
+		if (!canEdit) {
+			throw new Error('[[error:no-privileges]]');
+		}
 
-				if (data.pid) {
-					toggleEssenced(data.tid, data.pid, callback);
-				} else {
-					toggleEssenced(data.tid, callback);
-				}
-		});
+		return await toggleEssenced(socket.uid, data.tid, data.pid);
+
+		// privileges.topics.isAdminOrMod(data.tid,socket.uid,function(err,canAddEssence){
+		// 	if(!canAddEssence){
+		// 		return callback(new Error('[[error:no-privileges]]'));
+		// 	}
+
+		// 		if (data.pid) {
+		// 			toggleEssenced(data.tid, data.pid, callback);
+		// 		} else {
+		// 			toggleEssenced(data.tid, callback);
+		// 		}
+		// });
 	};
 
 }
 //帖子加精 和取消精华帖标示
-function toggleEssenced(tid, pid, callback) {
-	if (!callback) {
-		callback = pid;
-		pid = false;
-	}//isEssenced
+async function toggleEssenced(uid, tid, pid) {
+	console.log('Avatar info', `essence toggleEssenced`);
 
-	topics.getTopicField(tid, 'isEssenced', function(err, isEssenced) {
-		isEssenced = parseInt(isEssenced, 10) === 1;
+	let isEssenced = await topics.getTopicField(tid, 'isEssenced');
+	isEssenced = parseInt(isEssenced, 10) === 1;
+	if(isEssenced) {
+		await topics.setTopicFields(tid, {isEssenced: 0, essencedPid: 0});
+		await db.sortedSetRemove('topics:essenced', Date.now(), tid);
+		// await db.sortedSetRemove('topics:')
+	}else {
+		await topics.setTopicFields(tid, {isEssenced: 1, essencedPid: pid});
+		await db.sortedSetAdd('topics:essenced', Date.now(), tid);
 
-		async.parallel([
-			function(next) {
-				topics.setTopicField(tid, 'isEssenced', isEssenced ? 0 : 1, next);
-			},
-			function(next) {
-				if (!isEssenced && pid) {
-					topics.setTopicField(tid, 'essencedPid', pid, next);
-				} else {
-					topics.deleteTopicField(tid, 'essencedPid', next);
+		if(pid) {
+			const data = await posts.getPostData(pid);
+			await rewards.checkConditionAndRewardUser({
+				uid: data.uid,
+				condition: 'HollyEssence/essence.accepted',
+				method: async function() {
+					await user.incrementUserFieldBy(data.uid, 'HollyEssence/essence.accepted', 1);
 				}
-			},
-			function(next) {
-				if (!isEssenced && pid) { //原未加精  现在toggle 加精
-					posts.getPostData(pid, function(err, data) {
-						//检查奖励条件 奖励发精华帖的用户
-						//TODO 待修改 验证确认
-						rewards.checkConditionAndRewardUser(data.uid, 'HollyEssence/essence.accepted', function(callback) {
-							user.incrementUserFieldBy(data.uid, 'HollyEssence/essence.accepted', 1, callback);
-						});
-
-						next();
-					});
-				} else {
-					next();
-				}
-			},
-			function(next) {
-				if (!isEssenced) { //原未加精  现在toggle 加精
-					db.sortedSetAdd('topics:essenced', Date.now(), tid, next);
-				} else {
-					db.sortedSetRemove('topics:essenced', tid, next);
-				}
-			}
-		], function(err) {
-			callback(err, {isEssenced: !isEssenced});
-		});
-	});
-}
-
-function renderEssenced(req, res, next) {
-	var stop = (parseInt(meta.config.topicsPerList, 10) || 20) - 1;
-	topics.getTopicsFromSet('topics:essenced', req.uid, 0, stop, function(err, data) {
-		if (err) {
-			return next(err);
+			})
 		}
-
-		data['feeds:disableRSS'] = true;
-		data.breadcrumbs = helpers.buildBreadcrumbs([{text: '精华帖'}]);
-		res.render('recent', data);
-	});
+	}
+	plugins.fireHook('action:topic.toggleEssenced', { uid: uid, tid: tid, pid: pid, isEssenced: !isEssenced });
+	return { isEssenced: !isEssenced };
 }
+
+async function renderEssenced(req, res) {
+	const page = parseInt(req.query.page, 10) || 1;
+
+	const [settings, allTids, canPost] = await Promise.all([
+		user.getSettings(req.uid),
+		db.getSortedSetRevRange('topics:essenced', 0, 199),
+		canPostTopic(req.uid),
+	]);
+	let tids = await privileges.topics.filterTids('read', allTids, req.uid);
+
+	const start = Math.max(0, (page - 1) * settings.topicsPerPage);
+	const stop = start + settings.topicsPerPage - 1;
+
+	const topicCount = tids.length;
+	const pageCount = Math.max(1, Math.ceil(topicCount / settings.topicsPerPage));
+	tids = tids.slice(start, stop + 1);
+
+	const topicsData = await topics.getTopicsByTids(tids, req.uid);
+
+	const data = {};
+	data.topics = topicsData;
+	data.nextStart = stop + 1;
+	data.set = 'topics:essenced';
+	data['feeds:disableRSS'] = true;
+	data.pagination = pagination.create(page, pageCount);
+	data.canPost = canPost;
+	data.title = '精华帖';
+
+	data.breadcrumbs = helpers.buildBreadcrumbs([{ text: '精华帖' }]);
+
+	res.render('recent', data);
+}
+
+
+// async function renderEssenced(req, res, next) {
+// 	console.log('Avatar info', `essence renderEssenced`);
+// 	var stop = (parseInt(meta.config.topicsPerList, 10) || 20) - 1;
+// 	console.log(`[Avatar info]: rendering essence`, req, res, stop, helpers);
+// 	topics.getTopicsFromSet('topics:essenced', req.uid, 0, stop, function(err, data) {
+// 		if (err) {
+// 			return next(err);
+// 		}
+
+// 		data['feeds:disableRSS'] = true;
+// 		data.breadcrumbs = helpers.buildBreadcrumbs([{text: '精华帖'}]);
+// 		res.render('recent', data);
+// 	});
+// }
 
 module.exports = plugin;

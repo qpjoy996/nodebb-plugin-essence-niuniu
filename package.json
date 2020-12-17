@@ -1,11 +1,11 @@
 {
-  "name": "nodebb-plugin-essence",
-  "version": "0.0.6",
+  "name": "nodebb-plugin-essence-niuniu",
+  "version": "0.1.8",
   "description": "A nodebb-plugin-essence plugin for NodeBB which allows administrator to mark topics as essence",
   "main": "library.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hl4god/nodebb-plugin-essence"
+    "url": "https://github.com/qpjoy996/nodebb-plugin-essence-niuniu"
   },
   "keywords": [
     "nodebb",
@@ -13,12 +13,12 @@
     "essence"
   ],
   "author": {
-    "name": "Holly",
-    "email": "hl4god@gmail.com"
+    "name": "qpjoy",
+    "email": "qpjoy996@163.com"
   },
   "license": "BSD-2-Clause",
   "bugs": {
-    "url": "https://github.com/hl4god/nodebb-plugin-essence/issues"
+    "url": "https://github.com/qpjoy996/nodebb-plugin-essence-niuniu/issues"
   },
   "readmeFilename": "README.md",
   "nbbpm": {

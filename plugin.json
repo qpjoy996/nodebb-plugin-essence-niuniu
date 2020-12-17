@@ -1,8 +1,8 @@
 {
-	"id": "nodebb-plugin-essence",
+	"id": "nodebb-plugin-essence-niuniu",
 	"name": "Mark Topic as essence Plugin for NodeBB",
-	"description": "A nodebb-plugin-essence plugin for NodeBB which allows administrator to mark topics as essence",
-	"url": "https://github.com/hl4god/nodebb-plugin-essence",
+	"description": "A nodebb-plugin-essence-niuniu plugin for NodeBB which allows administrator to mark topics as essence",
+	"url": "https://github.com/qpjoy996/nodebb-plugin-essence-niuniu",
 	"library": "./library.js",
 	"hooks": [
 		{
